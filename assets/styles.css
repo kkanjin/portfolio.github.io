@@ -1,494 +1,773 @@
-/* ═══════════════════════════════════════════════════════════════════
-   Kingsley Kanjin — GIS Analyst & Water Quality Planner Portfolio
-   Color Palette: Environmental Blue (Option A)
-   ═══════════════════════════════════════════════════════════════════ */
+# ════════════════════════════════════════════════════════════════════════════════
+# Ohio HUC-8 Water Quality Monitoring Coverage & Gap Assessment
+# Author: Kingsley Kanjin | GIS Analyst
+# Data: USGS WBD, NHD & EPA Water Quality Portal | Period: 2024-2025
+# ════════════════════════════════════════════════════════════════════════════════
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+# ── 0. IMPORTS ─────────────────────────────────────────────────────────────────
+import geopandas as gpd
+import pandas as pd
+import numpy as np
+import json, os, warnings
+import folium
+import folium.plugins
+from folium.plugins import MarkerCluster
+import branca.colormap as cm
+import plotly.graph_objects as go
+from plotly.io import to_html
+from shapely.geometry import MultiPoint
+warnings.filterwarnings('ignore')
+print("✅ Libraries loaded")
 
-:root {
-  /* ── Core Colors ── */
-  --bg:        #ddeef8;       /* deep navy — main background         */
-  --bg2:       #ddeef8;       /* slightly lighter — section bg       */
-  --card:      #132240;       /* card / panel background             */
-  --border:    #1e3a5f;       /* borders and dividers                */
-  --border2:   #2a5080;       /* hover borders                       */
+# ── 1. USER INPUTS ─────────────────────────────────────────────────────────────
+WATERSHED_SHP  = r"C:\Users\kanji\OneDrive\Documents\GIS Training\NIPS\OhioWatershed\HUC8.shp"
+WQ_CSV         = r"C:\Users\kanji\OneDrive\Documents\GIS Training\station\station\station.csv"
+RIVERS_SHP     = r"C:\Users\kanji\OneDrive\Documents\GIS Training\USA_Rivers_and_Streams-shp\River-r9gw71.0odx9.shp"
+YOUR_NAME      = "Kingsley Kanjin"
+YOUR_TITLE     = "GIS Analyst · Water Quality Planner"
+OUTPUT_FILE    = "ohio_wq_final.html"
 
-  /* ── Accent ── */
-  --accent:    #1a6b9a;       /* primary steel blue                  */
-  --accent2:   #1a6b9a;       /* highlight / hover state             */
-  --accent-bg: rgba(26,107,154,0.12); /* subtle tinted background    */
+# ── 2. LOAD DATA ───────────────────────────────────────────────────────────────
+watersheds  = gpd.read_file(WATERSHED_SHP)
+wq_data     = pd.read_csv(WQ_CSV)
+rivers_usa  = gpd.read_file(RIVERS_SHP)
+print(f"✅ Watersheds: {len(watersheds)} | WQ rows: {len(wq_data):,} | Rivers: {len(rivers_usa):,}")
 
-  /* ── Text ── */
-  --ink:       #082f4a;       /* primary text — blue-tinted white    */
-  --muted:     #7aabbf;       /* secondary / muted text              */
-  --heading:   #ffffff;       /* headings                            */
+# ── 3. CLEAN WQ DATA ───────────────────────────────────────────────────────────
+wq_data['HUCEightDigitCode'] = (
+    wq_data['HUCEightDigitCode'].dropna()
+    .astype(int).astype(str).str.zfill(8)
+)
+wq_clean = wq_data.dropna(subset=['HUCEightDigitCode','LatitudeMeasure','LongitudeMeasure'])
 
-  /* ── Shadows ── */
-  --shadow-sm: 0 2px 8px  rgba(0,0,0,0.25);
-  --shadow-md: 0 8px 24px rgba(0,0,0,0.35);
-  --shadow-lg: 0 16px 40px rgba(0,0,0,0.45);
-}
+# ── 4. SPATIAL CONVERSION ──────────────────────────────────────────────────────
+wq_gdf = gpd.GeoDataFrame(
+    wq_clean,
+    geometry=gpd.points_from_xy(wq_clean['LongitudeMeasure'], wq_clean['LatitudeMeasure']),
+    crs="EPSG:4326"
+).to_crs(watersheds.crs)
+print(f"✅ WQ GeoDataFrame: {len(wq_gdf):,} points")
 
-/* ── Reset & Base ────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html  { scroll-behavior: smooth; }
-body  {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
-  line-height: 1.7;
-  -webkit-font-smoothing: antialiased;
-}
-a { color: var(--accent2); text-decoration: none; transition: color 0.2s ease; }
-a:hover { color: var(--ink); }
-h1, h2, h3, h4 { color: var(--heading); font-family: 'DM Serif Display', serif; }
+# ── 5. SPATIAL JOIN ────────────────────────────────────────────────────────────
+joined = gpd.sjoin(wq_gdf, watersheds[['HUC8','Name','geometry']],
+                   how='inner', predicate='within')
 
-/* ── Scrollbar ───────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+# ── 6. STATION COUNTS ──────────────────────────────────────────────────────────
+station_counts    = joined.groupby(['HUC8','Name']).size().reset_index(name='station_count')
+watersheds_merged = watersheds.merge(station_counts, on='HUC8', how='left')
+watersheds_merged['station_count'] = watersheds_merged['station_count'].fillna(0).astype(int)
+if 'Name_x' in watersheds_merged.columns:
+    watersheds_merged = watersheds_merged.rename(columns={'Name_x':'Name'}).drop(columns=['Name_y'])
+watersheds_merged['area_km2']            = (watersheds_merged.geometry.area / 1e6).round(1)
+watersheds_merged['density_per_1000km2'] = (
+    watersheds_merged['station_count'] / watersheds_merged['area_km2'] * 1000
+).round(2)
 
-/* ── Navigation ─────────────────────────────────────────────────── */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(10, 22, 40, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-}
-.nav {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-}
-.brand {
-  font-family: 'DM Serif Display', serif;
-  font-size: 1.15em;
-  font-weight: 400;
-  color: var(--heading);
-  letter-spacing: 0.3px;
-}
-.nav a {
-  margin-left: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 0.88em;
-  font-weight: 500;
-  letter-spacing: 0.2px;
-  transition: all 0.2s ease;
-}
-.nav a:hover {
-  color: var(--ink);
-  background: var(--accent-bg);
-}
-.nav a.active {
-  background: var(--accent-bg);
-  border: 1px solid rgba(77, 184, 212, 0.25);
-  color: var(--accent2);
-}
+# ── 7. LOCATION CATEGORIES ─────────────────────────────────────────────────────
+def classify_location(loc_type):
+    if any(x in loc_type for x in ['River','Stream','Canal','Ditch','Channelized']):
+        return 'River/Stream'
+    elif any(x in loc_type for x in ['Lake','Reservoir','Impoundment','Great Lake','BEACH']):
+        return 'Lake/Reservoir'
+    elif any(x in loc_type for x in ['Well','Groundwater','Subsurface','Spring','Hyporheic']):
+        return 'Groundwater'
+    elif any(x in loc_type for x in ['Facility','POTW','Industrial','Sewage','Sewer',
+                                      'Outfall','Waste','Septic','CERCLA','Landfill']):
+        return 'Facility/Discharge'
+    elif any(x in loc_type for x in ['Wetland','Shore','Estuary','Sinkhole']):
+        return 'Wetland/Other'
+    elif 'Atmosphere' in loc_type:
+        return 'Atmosphere'
+    else:
+        return 'Other'
 
-/* ── Layout ──────────────────────────────────────────────────────── */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 20px;
-}
+joined['location_category'] = joined['MonitoringLocationTypeName'].apply(classify_location)
 
-/* ── Hero / Profile Section ──────────────────────────────────────── */
-.hero {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 40px;
-  align-items: center;
-  min-height: 70vh;
-}
-.hero .name {
-  font-size: 52px;
-  line-height: 1.1;
-  margin: 8px 0;
-  color: var(--heading);
-  letter-spacing: -0.5px;
-}
-.role {
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 600;
-  font-size: 1em;
-  color: var(--accent2);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.hero p {
-  color: var(--muted);
-  font-size: 17px;
-  margin-bottom: 10px;
-}
+# ── 8. GAP ANALYSIS ────────────────────────────────────────────────────────────
+results = []
+for _, watershed in watersheds_merged.iterrows():
+    huc, name, area = watershed['HUC8'], watershed['Name'], watershed['area_km2']
+    polygon = watershed['geometry']
+    pts     = wq_gdf[wq_gdf['HUCEightDigitCode'] == huc]
+    if len(pts) < 2:
+        results.append({'HUC8':huc,'Name':name,'area_km2':area,
+                        'station_count':len(pts),'coverage_pct':0.0,'gap_score':100.0})
+        continue
+    hull         = MultiPoint(pts.geometry.values).convex_hull
+    intersection = polygon.intersection(hull)
+    coverage_pct = round((intersection.area / polygon.area) * 100, 1)
+    results.append({'HUC8':huc,'Name':name,'area_km2':area,
+                    'station_count':watershed['station_count'],
+                    'coverage_pct':coverage_pct,
+                    'gap_score':round(100 - coverage_pct, 1)})
 
-/* ── CTA Buttons ─────────────────────────────────────────────────── */
-.cta {
-  display: flex;
-  gap: 12px;
-  margin-top: 18px;
-  flex-wrap: wrap;
-}
-.btn {
-  display: inline-block;
-  padding: 11px 22px;
-  border-radius: 10px;
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 700;
-  font-size: 0.9em;
-  letter-spacing: 0.3px;
-  background: var(--accent);
-  color: #ffffff;
-  border: 1px solid var(--accent);
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 12px rgba(26, 107, 154, 0.3);
-  cursor: pointer;
-}
-.btn:hover {
-  background: var(--accent2);
-  border-color: var(--accent2);
-  color: var(--bg);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(77, 184, 212, 0.35);
-}
-.btn.secondary {
-  background: transparent;
-  color: var(--accent2);
-  border: 1px solid var(--border2);
-}
-.btn.secondary:hover {
-  background: var(--accent-bg);
-  border-color: var(--accent2);
-  color: var(--ink);
-}
+gap_df  = pd.DataFrame(results)
+gap_gdf = watersheds_merged.merge(gap_df[['HUC8','coverage_pct','gap_score']], on='HUC8', how='left')
 
-/* ── Portrait ────────────────────────────────────────────────────── */
-.portrait {
-  width: 220px;
-  height: 220px;
-  border-radius: 999px;
-  border: 5px solid var(--card);
-  outline: 2px solid var(--border2);
-  object-fit: cover;
-  box-shadow: var(--shadow-lg);
-  transition: transform 0.3s ease;
-}
-.portrait:hover { transform: scale(1.02); }
+cat_cols = ['River/Stream','Groundwater','Lake/Reservoir',
+            'Atmosphere','Facility/Discharge','Other','Wetland/Other']
+category_summary = joined.groupby(
+    ['HUC8','location_category']).size().unstack(fill_value=0).reset_index()
+gap_gdf = gap_gdf.merge(category_summary, on='HUC8', how='left')
+for col in cat_cols:
+    gap_gdf[col] = gap_gdf[col].fillna(0).astype(int) if col in gap_gdf.columns else 0
 
-/* ── Slideshow Banner ────────────────────────────────────────────── */
-.banner {
-  position: relative;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-}
-.banner img {
-  width: 100%;
-  height: 360px;
-  object-fit: cover;
-  position: absolute;
-  top: 0; left: 0;
-  opacity: 0;
-  transition: opacity 1s ease;
-}
-.banner img.show { opacity: 1; }
+# ── 9. REPROJECT TO WGS84 ──────────────────────────────────────────────────────
+watersheds_wgs84 = gap_gdf.to_crs("EPSG:4326")
+for col in ['density_per_1000km2','coverage_pct','gap_score','area_km2']:
+    watersheds_wgs84[col] = watersheds_wgs84[col].round(1)
+for col in cat_cols:
+    watersheds_wgs84[col] = watersheds_wgs84[col].fillna(0).astype(int)
 
-/* ── Sections ────────────────────────────────────────────────────── */
-.section { padding: 20px 0; }
-.section h2 {
-  font-size: 28px;
-  margin-bottom: 20px;
-  color: var(--heading);
-  position: relative;
-  padding-bottom: 12px;
-}
-.section h2::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 48px; height: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  border-radius: 2px;
-}
+# ── 10. SUMMARY STATS ──────────────────────────────────────────────────────────
+active_ws       = int((watersheds_wgs84['station_count'] > 0).sum())
+unmonitored_ws  = 44 - active_ws
+most_monitored  = watersheds_wgs84.sort_values('station_count',      ascending=False).iloc[0]
+highest_density = watersheds_wgs84.sort_values('density_per_1000km2',ascending=False).iloc[0]
+best_coverage   = gap_df[gap_df['station_count'] > 1].sort_values('coverage_pct',ascending=False).iloc[0]
+worst_active    = gap_df[gap_df['station_count'] > 1].sort_values('gap_score',   ascending=False).iloc[0]
+org_counts      = joined['OrganizationFormalName'].value_counts().reset_index()
+org_counts.columns = ['org','count']
+top_org         = org_counts.iloc[0]
+zero_ws_names   = watersheds_wgs84[watersheds_wgs84['station_count'] == 0]['Name'].tolist()
+type_totals     = joined['location_category'].value_counts().reset_index()
+type_totals.columns = ['category','count']
+provider_counts = joined['ProviderName'].value_counts().reset_index()
+provider_counts.columns = ['provider','count']
+print(f"✅ Stats: {active_ws} active | {unmonitored_ws} unmonitored | {len(joined):,} locations")
 
-/* ── Experience Cards ────────────────────────────────────────────── */
-.exp {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px 24px;
-  margin-bottom: 20px;
-  line-height: 1.75;
-  color: var(--ink);
-  box-shadow: var(--shadow-md);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.exp:hover {
-  border-color: var(--border2);
-  box-shadow: var(--shadow-lg);
-}
+# ── 11. MAP COLOR BINS ─────────────────────────────────────────────────────────
+active_dens = watersheds_wgs84[watersheds_wgs84['density_per_1000km2'] > 0]['density_per_1000km2']
+bins        = [0] + list(active_dens.quantile([0.2, 0.4, 0.6, 0.8, 1.0]))
+bins        = sorted(set([round(b, 1) for b in bins]))
 
-/* ── Skills Grid ─────────────────────────────────────────────────── */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  box-shadow: var(--shadow-sm);
-  color: var(--ink);
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-.card:hover {
-  border-color: var(--accent2);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(77, 184, 212, 0.12);
-}
-.card h3, .card h4 {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.95em;
-  font-weight: 700;
-  color: var(--accent2);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.card p, .card li {
-  font-size: 0.88em;
-  color: var(--muted);
-  line-height: 1.6;
-}
+def get_map_color(val):
+    if val <= 0:          return '#2d2d2d'
+    elif val <= bins[1]:  return '#c6dbef'
+    elif val <= bins[2]:  return '#6baed6'
+    elif val <= bins[3]:  return '#2171b5'
+    elif val <= bins[4]:  return '#08519c'
+    else:                 return '#08306b'
 
-/* ── Project Panels ──────────────────────────────────────────────── */
-#projects .lead { color: var(--muted); margin-bottom: 8px; }
-.panel {
-  margin: 24px 0;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--card);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  transform: translateY(14px);
-  opacity: 0;
-  transition: 0.8s all ease;
-}
-.panel.visible {
-  transform: translateY(0);
-  opacity: 1;
-}
-.panel:hover {
-  border-color: var(--border2);
-  box-shadow: var(--shadow-lg);
-}
-.panel-body {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 24px;
-  padding: 24px;
-}
-.subtitle {
-  color: var(--muted);
-  margin: 6px 0 12px;
-  font-size: 0.9em;
-}
+watersheds_wgs84['map_color'] = watersheds_wgs84['density_per_1000km2'].apply(get_map_color)
+watersheds_wgs84_sorted = watersheds_wgs84.copy()
 
-/* ── Meta Lists ──────────────────────────────────────────────────── */
-.meta {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.meta h4 {
-  font-family: 'DM Sans', sans-serif;
-  margin: 0 0 8px;
-  color: var(--accent2);
-  font-size: 0.85em;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.meta ul { margin: 0; padding-left: 16px; }
-.meta li {
-  margin: 4px 0;
-  color: var(--muted);
-  font-size: 0.88em;
-  line-height: 1.5;
-}
+# ── 12. CLIP RIVERS TO OHIO ────────────────────────────────────────────────────
+if rivers_usa.crs != watersheds_wgs84.crs:
+    rivers_usa = rivers_usa.to_crs(watersheds_wgs84.crs)
+ohio_boundary = watersheds_wgs84.union_all()
+rivers_ohio   = gpd.clip(rivers_usa, ohio_boundary)
+print(f"✅ Rivers clipped: {len(rivers_ohio):,} segments")
 
-/* ── Map Preview ─────────────────────────────────────────────────── */
-.panel-hero {
-  width: 100%;
-  height: 420px;
-  object-fit: contain;
-  background: var(--bg2);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
+# ── 13. BUILD FOLIUM MAP ───────────────────────────────────────────────────────
+folium_map = folium.Map(location=[40.4173,-82.9071], zoom_start=7, tiles=None)
 
-/* ── Section Divider ─────────────────────────────────────────────── */
-.divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border2), transparent);
-  margin: 8px 0;
-}
+folium.TileLayer('CartoDB dark_matter', name='Dark').add_to(folium_map)
+folium.TileLayer('CartoDB positron',    name='Light').add_to(folium_map)
+folium.TileLayer('OpenStreetMap',       name='Street Map').add_to(folium_map)
+folium.TileLayer(
+    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr='Esri', name='Satellite'
+).add_to(folium_map)
 
-/* ── Footer ──────────────────────────────────────────────────────── */
-.footer {
-  margin-top: 48px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  padding: 28px 0 36px;
-  text-align: center;
-  font-size: 0.85em;
-  line-height: 1.8;
-}
-.footer a {
-  color: var(--accent2);
-  transition: color 0.2s ease;
-}
-.footer a:hover { color: var(--ink); }
-.footer .credit {
-  color: var(--accent2);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 8px;
-}
+# Watershed polygons
+folium.GeoJson(
+    json.loads(watersheds_wgs84_sorted.to_json()),
+    name='HUC-8 Watersheds',
+    style_function=lambda f: {
+        'fillColor': f['properties']['map_color'],
+        'color':'white','weight':1.5,'fillOpacity':0.85
+    },
+    highlight_function=lambda f: {
+        'fillColor':'#ffff00','color':'white','weight':3,'fillOpacity':0.95
+    },
+    tooltip=folium.GeoJsonTooltip(
+        fields=['Name','HUC8','station_count','area_km2',
+                'density_per_1000km2','coverage_pct','gap_score'],
+        aliases=['Watershed:','HUC-8:','Stations (2024-25):','Area (km²):',
+                 'Density (per 1,000 km²):','Spatial Coverage (%):','Gap Score:'],
+        sticky=True,
+        style="""background-color:#ffffff;color:#082f4a;font-family:Segoe UI;
+                 font-size:13px;padding:10px;border:1px solid #1a6b9a;border-radius:4px;"""
+    )
+).add_to(folium_map)
 
-/* ── Full-Width Slideshow ────────────────────────────────────────── */
-.hero-slideshow {
-  position: relative;
-  width: 100%;
-  height: 90vh;
-  overflow: hidden;
-  margin: 0;
-  border-bottom: 2px solid var(--border);
-  z-index: 0;
-}
-@media (max-width: 768px) { .hero-slideshow { height: 70vh; } }
+# Rivers
+def river_style(feature):
+    miles = feature['properties']['Miles']
+    feat  = feature['properties']['Feature']
+    if feat in ['Artificial Path','Canal Ditch']:
+        return {'color':'#4292c6','weight':0.5,'opacity':0.3}
+    weight  = 2.5 if miles >= 50 else 1.8 if miles >= 10 else 1.2 if miles >= 1 else 0.7
+    opacity = 0.9 if miles >= 50 else 0.8 if miles >= 10 else 0.7 if miles >= 1 else 0.5
+    return {'color':'#63b3ed','weight':weight,'opacity':opacity}
 
-.hero-slideshow .slides { position: absolute; inset: 0; }
-.hero-slideshow .slides img {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 1.5s ease;
-}
+folium.GeoJson(
+    json.loads(rivers_ohio.to_json()),
+    name='Rivers & Streams',
+    style_function=river_style,
+    tooltip=folium.GeoJsonTooltip(
+        fields=['Name','Feature','Miles'],
+        aliases=['River:','Type:','Length (miles):'],
+        sticky=False,
+        style="""background-color:#ffffff;color:#082f4a;font-family:Segoe UI;
+                 font-size:12px;padding:8px;border:1px solid #63b3ed;border-radius:4px;"""
+    )
+).add_to(folium_map)
 
-@keyframes fallbackFade {
-  0%   { opacity: 1 }
-  27%  { opacity: 1 }
-  33%  { opacity: 0 }
-  94%  { opacity: 0 }
-  100% { opacity: 1 }
+# Monitoring locations — clustered
+cat_color_map = {
+    'River/Stream':'#2171b5','Lake/Reservoir':'#74c476',
+    'Groundwater':'#fd8d3c','Facility/Discharge':'#d94701',
+    'Atmosphere':'#984ea3','Wetland/Other':'#a65628','Other':'#969696'
 }
-.hero-slideshow .slides img         { animation: fallbackFade 20s infinite; }
-.hero-slideshow .slides img:nth-child(2) { animation-delay: 4s; }
-.hero-slideshow .slides img:nth-child(3) { animation-delay: 8s; }
-.hero-slideshow .slides img:nth-child(4) { animation-delay: 12s; }
-.hero-slideshow .slides img:nth-child(5) { animation-delay: 16s; }
-.hero-slideshow.js-active .slides img    { animation: none; }
-.hero-slideshow .slides img.is-active    { opacity: 1; }
+monitoring_group = folium.FeatureGroup(name='Monitoring Locations (2024-2025)')
+marker_cluster   = MarkerCluster(
+    options={'maxClusterRadius':40,'disableClusteringAtZoom':10,'spiderfyOnMaxZoom':True}
+).add_to(monitoring_group)
 
-/* Overlay text on slideshow */
-.hero-slideshow .overlay-text {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  background: rgba(10, 22, 40, 0.55);
-  color: var(--ink);
-  padding: 28px 42px;
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(77, 184, 212, 0.15);
-}
-.hero-slideshow .overlay-text h1 {
-  margin: 0 0 10px;
-  font-size: 52px;
-  letter-spacing: 0.5px;
-}
-.hero-slideshow .overlay-text p {
-  margin: 0;
-  font-size: 20px;
-  color: var(--muted);
-}
-@media (max-width: 768px) {
-  .hero-slideshow .overlay-text h1 { font-size: 34px; }
-  .hero-slideshow .overlay-text p  { font-size: 16px; }
-  .hero-slideshow .overlay-text    { padding: 20px 24px; }
-}
+monitoring_pts = joined.copy()
+if monitoring_pts.crs != "EPSG:4326":
+    monitoring_pts = monitoring_pts.to_crs("EPSG:4326")
 
-/* ── ArcGIS / Embedded Maps Section ─────────────────────────────── */
-#maps { text-align: center; }
-.map-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-.map-frame {
-  max-width: 1200px;
-  margin: 0 auto;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: var(--shadow-md);
-  transition: border-color 0.2s ease;
-}
-.map-frame:hover { border-color: var(--border2); }
-.map-frame iframe,
-arcgis-embedded-map {
-  width: 100%;
-  height: 600px;
-  border: none;
-  border-radius: 10px;
-}
-arcgis-embedded-map {
-  overflow: hidden;
-}
-.map-caption {
-  text-align: center;
-  color: var(--muted);
-  padding: 10px 6px 4px;
-  font-size: 0.88em;
-  letter-spacing: 0.2px;
-}
+for _, row in monitoring_pts.iterrows():
+    try:
+        cat      = row.get('location_category','Other')
+        name_col = 'Name_right' if 'Name_right' in row.index else 'Name'
+        folium.CircleMarker(
+            location=[row.geometry.y, row.geometry.x],
+            radius=5, color='white', weight=0.5,
+            fill=True, fill_color=cat_color_map.get(cat,'#969696'), fill_opacity=0.85,
+            tooltip=f"""<div style='font-family:Segoe UI;font-size:12px;
+                        background:#ffffff;color:#082f4a;padding:8px;
+                        border:1px solid #1a6b9a;border-radius:4px;'>
+                        <b>{row.get('MonitoringLocationIdentifier','Unknown')}</b><br>
+                        Type: {row.get('MonitoringLocationTypeName','Unknown')}<br>
+                        Category: {cat}<br>
+                        Org: {row.get('OrganizationFormalName','Unknown')}<br>
+                        Watershed: {row.get(name_col,'Unknown')}</div>"""
+        ).add_to(marker_cluster)
+    except Exception:
+        continue
 
-/* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 980px) {
-  .hero         { grid-template-columns: 1fr; min-height: auto; gap: 24px; }
-  .grid         { grid-template-columns: 1fr 1fr; }
-  .panel-body   { grid-template-columns: 1fr; }
-  .meta         { grid-template-columns: 1fr; }
-  .map-grid     { grid-template-columns: 1fr; }
-  .map-frame iframe,
-  arcgis-embedded-map { height: 450px; }
+monitoring_group.add_to(folium_map)
+folium.LayerControl(position='topright', collapsed=False).add_to(folium_map)
+
+# Fit bounds
+bounds = watersheds_wgs84.total_bounds
+folium_map.fit_bounds([[bounds[1],bounds[0]],[bounds[3],bounds[2]]])
+
+# Custom legend
+legend_html = f"""
+<div id="map-legend" style="position:fixed;bottom:40px;left:20px;z-index:9999;
+     padding:14px 18px;border-radius:8px;min-width:230px;
+     background:rgba(255,255,255,0.95);border:1px solid #1a6b9a;
+     font-family:'Segoe UI',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#082f4a;">
+    Monitoring Density<br>
+    <span style="font-weight:400;font-size:11px;color:#1a6b9a;">
+      Stations per 1,000 km² — 2024-2025</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px;">
+    {''.join([
+      f'<div style="display:flex;align-items:center;gap:8px;">'
+      f'<div style="width:22px;height:14px;background:{c};border-radius:2px;'
+      f'border:1px solid rgba(0,0,0,0.1);"></div>'
+      f'<span style="font-size:12px;color:#082f4a;">{l}</span></div>'
+      for c, l in [
+        ('#08306b', f'Very High (> {round(bins[4],1)})'),
+        ('#08519c', f'High ({round(bins[3],1)} - {round(bins[4],1)})'),
+        ('#2171b5', f'Medium ({round(bins[2],1)} - {round(bins[3],1)})'),
+        ('#6baed6', f'Low ({round(bins[1],1)} - {round(bins[2],1)})'),
+        ('#c6dbef', f'Very Low (0 - {round(bins[1],1)})'),
+        ('#2d2d2d', 'No Monitoring'),
+      ]
+    ])}
+  </div>
+</div>"""
+
+folium_map.get_root().html.add_child(folium.Element(legend_html))
+folium_map_html = folium_map.get_root().render()
+print("✅ Map built")
+
+# ── 14. BUILD ALL CHARTS ───────────────────────────────────────────────────────
+BG    = '#ffffff'
+BG2   = '#f0f7ff'
+GRID  = '#dce8f0'
+TEXT  = '#082f4a'
+MUTED = '#2a7aab'
+BLUE  = '#0d6d9e'
+WHITE = '#ffffff'
+
+def base_layout(title_text, height=450):
+    return dict(
+        title=dict(text=title_text, font=dict(color='#082f4a', size=17, family='Segoe UI')),
+        paper_bgcolor=BG,
+        plot_bgcolor=BG2,
+        font=dict(color='#0d6d9e', size=14, family='Segoe UI'),
+        height=height,
+        margin=dict(l=60, r=40, t=65, b=60)
+    )
+
+# Density bar
+density_sorted = watersheds_wgs84.sort_values('density_per_1000km2', ascending=True)
+median_val     = density_sorted[density_sorted['density_per_1000km2'] > 0]['density_per_1000km2'].median()
+fig_bar = go.Figure(go.Bar(
+    x=density_sorted['density_per_1000km2'].tolist(),
+    y=density_sorted['Name'].tolist(),
+    orientation='h',
+    marker_color=[get_map_color(v) for v in density_sorted['density_per_1000km2']],
+    hovertemplate='<b>%{y}</b><br>Density: %{x:.1f} stations/1,000 km²<extra></extra>'
+))
+fig_bar.add_vline(x=median_val, line_dash='dash', line_color='#0d6d9e', line_width=2,
+                  annotation_text=f'Median: {median_val:.1f}',
+                  annotation_font_color='#082f4a', annotation_font_size=14)
+fig_bar.update_layout(**base_layout(
+    'Monitoring Density by Watershed — 2024-2025 (Stations per 1,000 km²)', height=700))
+fig_bar.update_layout(margin=dict(l=220, r=40, t=65, b=50))
+fig_bar.update_xaxes(gridcolor=GRID, title='Stations per 1,000 km²',
+                     color='#082f4a', title_font_color='#082f4a',
+                     title_font_size=14, tickfont_size=13)
+fig_bar.update_yaxes(gridcolor=GRID, color='#082f4a', tickfont_size=13)
+
+# Gap score bar
+gap_sorted   = watersheds_wgs84.sort_values('gap_score', ascending=False)
+g_min, g_max = float(gap_sorted['gap_score'].min()), float(gap_sorted['gap_score'].max())
+
+def gap_color(v):
+    n = (v - g_min) / (g_max - g_min) if g_max > g_min else 0
+    return '#08306b' if n>=0.8 else '#08519c' if n>=0.6 else '#2171b5' if n>=0.4 else '#6baed6' if n>=0.2 else '#c6dbef'
+
+fig_gap = go.Figure(go.Bar(
+    x=gap_sorted['Name'].tolist(),
+    y=gap_sorted['gap_score'].tolist(),
+    marker_color=[gap_color(v) for v in gap_sorted['gap_score']],
+    customdata=gap_sorted['coverage_pct'].tolist(),
+    hovertemplate='<b>%{x}</b><br>Gap Score: %{y:.1f}<br>Coverage: %{customdata:.1f}%<extra></extra>'
+))
+fig_gap.add_hline(y=15, line_dash='dash', line_color='#0d6d9e', line_width=2,
+                  annotation_text='Gap threshold (15)',
+                  annotation_font_color='#082f4a', annotation_font_size=14)
+fig_gap.update_layout(**base_layout(
+    'Monitoring Gap Score — 2024-2025 (Higher = Larger Unmonitored Areas)', height=450))
+fig_gap.update_layout(margin=dict(l=60, r=40, t=65, b=160))
+fig_gap.update_xaxes(gridcolor=GRID, tickangle=45, color='#082f4a',
+                     tickfont_size=13, tickfont_color='#082f4a')
+fig_gap.update_yaxes(gridcolor=GRID, title='Gap Score', color='#082f4a',
+                     title_font_color='#082f4a', title_font_size=14, tickfont_size=13)
+
+# Donut — location types
+donut_colors = ['#2171b5','#6baed6','#74c476','#fd8d3c','#d94701','#969696','#a1d99b']
+fig_donut = go.Figure(go.Pie(
+    labels=type_totals['category'].tolist(),
+    values=type_totals['count'].tolist(),
+    hole=0.6,
+    marker=dict(colors=donut_colors[:len(type_totals)], line=dict(color=WHITE, width=2)),
+    hovertemplate='<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>',
+    textinfo='none'
+))
+fig_donut.update_layout(
+    title=dict(text='Monitoring Location Type Breakdown — 2024-2025',
+               font=dict(color='#082f4a', size=17, family='Segoe UI')),
+    paper_bgcolor=BG, plot_bgcolor=BG,
+    font=dict(color='#0d6d9e', size=14, family='Segoe UI'),
+    height=420, showlegend=True,
+    legend=dict(font=dict(color='#082f4a', size=13), bgcolor=WHITE,
+                bordercolor=GRID, borderwidth=1, x=1.02, y=0.5),
+    annotations=[dict(text=f'{len(joined):,}<br>Stations', x=0.5, y=0.5,
+                      font=dict(size=16, color='#082f4a'), showarrow=False)],
+    margin=dict(l=20, r=150, t=65, b=20)
+)
+
+# Organization bar
+blue_shades = ['#08306b','#08519c','#2171b5','#4292c6','#6baed6','#9ecae1','#c6dbef','#deebf7']
+fig_org = go.Figure(go.Bar(
+    x=org_counts['count'].tolist(),
+    y=org_counts['org'].tolist(),
+    orientation='h',
+    marker_color=blue_shades[:len(org_counts)],
+    hovertemplate='<b>%{y}</b><br>Stations: %{x:,}<extra></extra>'
+))
+fig_org.update_layout(**base_layout(
+    'Monitoring Activity by Organization — 2024-2025', height=420))
+fig_org.update_layout(margin=dict(l=350, r=40, t=65, b=50))
+fig_org.update_xaxes(gridcolor=GRID, title='Number of Monitoring Locations',
+                     color='#082f4a', title_font_color='#082f4a',
+                     title_font_size=14, tickfont_size=13)
+fig_org.update_yaxes(gridcolor=GRID, color='#082f4a',
+                     autorange='reversed', tickfont_size=13)
+
+# Provider donut
+fig_provider = go.Figure(go.Pie(
+    labels=provider_counts['provider'].tolist(),
+    values=provider_counts['count'].tolist(),
+    hole=0.5,
+    marker=dict(colors=['#08306b','#4292c6'], line=dict(color=WHITE, width=3)),
+    hovertemplate='<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>',
+    textfont=dict(size=15, color=WHITE),
+    textinfo='label+percent+value'
+))
+fig_provider.update_layout(
+    title=dict(text='Data Provider — STORET vs NWIS',
+               font=dict(color='#082f4a', size=17, family='Segoe UI')),
+    paper_bgcolor=BG, plot_bgcolor=BG,
+    font=dict(color='#0d6d9e', size=14, family='Segoe UI'),
+    height=420, showlegend=False,
+    annotations=[dict(text='Data<br>Sources', x=0.5, y=0.5,
+                      font=dict(size=15, color='#082f4a'), showarrow=False)],
+    margin=dict(l=20, r=20, t=65, b=20)
+)
+
+# Scatter
+active    = watersheds_wgs84[watersheds_wgs84['station_count'] > 0].copy()
+max_count = int(active['station_count'].max())
+fig_scatter = go.Figure()
+fig_scatter.add_shape(type='line', x0=0, x1=max_count*1.1, y0=70, y1=70,
+                      line=dict(color='#0d6d9e', dash='dash', width=2))
+fig_scatter.add_annotation(x=max_count*0.75, y=73, text='70% coverage threshold',
+                            font=dict(color='#082f4a', size=14), showarrow=False)
+fig_scatter.add_trace(go.Scatter(
+    x=active['station_count'].tolist(),
+    y=active['coverage_pct'].tolist(),
+    mode='markers+text',
+    marker=dict(
+        size=12,
+        color=active['density_per_1000km2'].tolist(),
+        colorscale=[[0,'#c6dbef'],[0.25,'#6baed6'],
+                    [0.5,'#2171b5'],[0.75,'#08519c'],[1,'#08306b']],
+        cmin=float(active['density_per_1000km2'].min()),
+        cmax=float(active['density_per_1000km2'].max()),
+        showscale=True,
+        colorbar=dict(
+            title=dict(text='Density<br>per 1,000 km²',
+                       font=dict(color='#082f4a', size=13)),
+            tickfont=dict(color='#082f4a', size=13),
+            bgcolor=WHITE, bordercolor=GRID,
+            borderwidth=1, thickness=15, len=0.8
+        ),
+        line=dict(color=WHITE, width=0.8)
+    ),
+    text=active['Name'].tolist(),
+    textposition='top center',
+    textfont=dict(size=11, color='#0d6d9e'),
+    hovertemplate='<b>%{text}</b><br>Stations: %{x:,}<br>Coverage: %{y:.1f}%<br>Density: %{marker.color:.1f}<extra></extra>'
+))
+fig_scatter.update_layout(**base_layout(
+    'Station Count vs Spatial Coverage — Active Watersheds (2024-2025)', height=500))
+fig_scatter.update_layout(margin=dict(l=60, r=100, t=65, b=60))
+fig_scatter.update_xaxes(gridcolor=GRID, title='Total Station Count',
+                         color='#082f4a', title_font_color='#082f4a',
+                         title_font_size=14, tickfont_size=13)
+fig_scatter.update_yaxes(gridcolor=GRID, title='Spatial Coverage (%)',
+                         color='#082f4a', title_font_color='#082f4a',
+                         title_font_size=14, tickfont_size=13)
+
+# Stacked bar
+cat_colors_map = {
+    'River/Stream':'#2171b5','Groundwater':'#74c476','Lake/Reservoir':'#6baed6',
+    'Atmosphere':'#fd8d3c','Facility/Discharge':'#d94701',
+    'Other':'#969696','Wetland/Other':'#a1d99b'
 }
-@media (max-width: 640px) {
-  .grid         { grid-template-columns: 1fr; }
-  .hero .name   { font-size: 38px; }
-  .banner img   { height: 240px; }
-  .cta          { flex-direction: column; }
-  .btn          { text-align: center; }
-  .section h2   { font-size: 24px; }
-  .map-frame iframe,
-  arcgis-embedded-map { height: 360px; }
-}
+stack_sorted = watersheds_wgs84[watersheds_wgs84['station_count'] > 0]\
+    .sort_values('station_count', ascending=True)
+fig_stack = go.Figure()
+for cat in cat_cols:
+    if cat in stack_sorted.columns:
+        fig_stack.add_trace(go.Bar(
+            name=cat,
+            x=stack_sorted[cat].tolist(),
+            y=stack_sorted['Name'].tolist(),
+            orientation='h',
+            marker_color=cat_colors_map.get(cat, '#999'),
+            hovertemplate=f'<b>%{{y}}</b><br>{cat}: %{{x:,}}<extra></extra>'
+        ))
+fig_stack.update_layout(
+    barmode='stack',
+    **base_layout('Monitoring Location Type by Watershed — Active Only (2024-2025)', height=620)
+)
+fig_stack.update_layout(margin=dict(l=220, r=40, t=65, b=50))
+fig_stack.update_xaxes(gridcolor=GRID, title='Number of Monitoring Locations',
+                       color='#082f4a', title_font_color='#082f4a',
+                       title_font_size=14, tickfont_size=13)
+fig_stack.update_yaxes(gridcolor=GRID, color='#082f4a', tickfont_size=13)
+fig_stack.update_layout(
+    legend=dict(font=dict(color='#082f4a', size=13), bgcolor=WHITE,
+                bordercolor=GRID, borderwidth=1)
+)
+print("✅ All charts built")
+
+# ── 15. CONVERT CHARTS TO HTML ─────────────────────────────────────────────────
+cfg          = {'displayModeBar': False, 'responsive': True}
+div_bar      = to_html(fig_bar,      full_html=False, include_plotlyjs=False, config=cfg)
+div_gap      = to_html(fig_gap,      full_html=False, include_plotlyjs=False, config=cfg)
+div_donut    = to_html(fig_donut,    full_html=False, include_plotlyjs=False, config=cfg)
+div_org      = to_html(fig_org,      full_html=False, include_plotlyjs=False, config=cfg)
+div_provider = to_html(fig_provider, full_html=False, include_plotlyjs=False, config=cfg)
+div_scatter  = to_html(fig_scatter,  full_html=False, include_plotlyjs=False, config=cfg)
+div_stack    = to_html(fig_stack,    full_html=False, include_plotlyjs=False, config=cfg)
+
+# ── 16. BUILD & SAVE FINAL HTML ────────────────────────────────────────────────
+html_final = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohio HUC-8 Water Quality Monitoring Coverage & Gap Assessment</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        *{{margin:0;padding:0;box-sizing:border-box;}}
+        body{{background:#ffffff;color:#082f4a;font-family:'Segoe UI',sans-serif;font-size:17px;line-height:1.7;}}
+
+        /* Header */
+        .header{{background:linear-gradient(135deg,#d0eaf8 0%,#b8ddf2 50%,#d0eaf8 100%);
+                 border-bottom:3px solid #1a6b9a;padding:40px 60px;text-align:center;}}
+        .header h1{{font-size:2.3em;font-weight:800;letter-spacing:0.5px;color:#082f4a;}}
+        .header p{{color:#0d6d9e;font-size:1.1em;margin-top:10px;font-weight:500;}}
+        .header .author{{color:#1a6b9a;font-size:1.05em;margin-top:8px;
+                         font-style:italic;font-weight:600;}}
+
+        /* Stat cards */
+        .stats-bar{{display:flex;justify-content:center;gap:14px;padding:24px 40px;
+                    background:#ffffff;border-bottom:1px solid #dce8f0;flex-wrap:wrap;}}
+        .stat-card{{background:#ffffff;border:1px solid #aed4ea;border-radius:10px;
+                    padding:18px 20px;text-align:center;min-width:140px;flex:1 1 140px;
+                    box-shadow:0 2px 10px rgba(13,109,158,0.08);
+                    transition:border-color 0.2s,transform 0.2s;}}
+        .stat-card:hover{{border-color:#1a6b9a;transform:translateY(-2px);
+                          box-shadow:0 6px 18px rgba(13,109,158,0.15);}}
+        .stat-card .value{{font-size:1.9em;font-weight:800;color:#0d6d9e;}}
+        .stat-card .label{{font-size:0.8em;color:#1a6b9a;font-weight:700;
+                           margin-top:6px;text-transform:uppercase;letter-spacing:0.6px;}}
+
+        /* Info bar */
+        .info-bar{{background:#e8f4fb;border-top:1px solid #aed4ea;
+                   border-bottom:1px solid #aed4ea;padding:16px 50px;
+                   text-align:center;color:#082f4a;font-size:1em;
+                   line-height:1.8;font-weight:500;}}
+        .info-bar strong{{color:#082f4a;font-weight:800;}}
+
+        /* Sections */
+        .section{{padding:40px 50px 0 50px;}}
+        .section-title{{font-size:1.2em;font-weight:800;color:#0d6d9e;
+                        text-transform:uppercase;letter-spacing:1.5px;
+                        border-left:5px solid #1a6b9a;padding-left:16px;margin-bottom:14px;}}
+        .section-desc{{color:#1a6b9a;font-size:1em;margin-bottom:20px;
+                       line-height:1.8;font-weight:500;}}
+
+        /* Map */
+        .map-wrapper{{padding:0 50px 24px 50px;}}
+        .map-container{{width:100%;height:620px;border:1px solid #aed4ea;
+                        border-radius:10px;overflow:hidden;
+                        box-shadow:0 4px 18px rgba(13,109,158,0.1);}}
+        .map-container iframe{{width:100%;height:100%;border:none;}}
+
+        /* Charts */
+        .chart-grid-2{{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 50px;}}
+        .chart-full{{padding:20px 50px;}}
+        .chart-box{{background:#ffffff;border:1px solid #aed4ea;border-radius:10px;
+                    overflow:hidden;width:100%;
+                    box-shadow:0 2px 10px rgba(13,109,158,0.08);}}
+
+        /* Finding cards */
+        .findings{{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:20px 50px;}}
+        .finding-card{{background:#ffffff;border:1px solid #aed4ea;
+                       border-top:4px solid #1a6b9a;border-radius:10px;padding:22px;
+                       box-shadow:0 2px 10px rgba(13,109,158,0.08);}}
+        .finding-card .icon{{font-size:1.6em;margin-bottom:10px;}}
+        .finding-card h4{{font-size:0.95em;color:#0d6d9e;text-transform:uppercase;
+                          letter-spacing:0.5px;margin-bottom:10px;font-weight:800;}}
+        .finding-card p{{font-size:0.95em;color:#1a6b9a;line-height:1.7;font-weight:500;}}
+        .finding-card strong{{color:#082f4a;font-weight:800;}}
+
+        /* Footer — matches header */
+        .footer{{text-align:center;padding:36px;font-size:0.95em;
+                 background:linear-gradient(135deg,#d0eaf8 0%,#b8ddf2 50%,#d0eaf8 100%);
+                 border-top:3px solid #1a6b9a;margin-top:48px;line-height:1.9;}}
+        .footer .credit{{color:#082f4a;font-weight:800;font-size:1.1em;margin-bottom:10px;}}
+        .footer a{{color:#1a6b9a;text-decoration:none;font-weight:600;}}
+        .footer a:hover{{color:#082f4a;text-decoration:underline;}}
+        .footer .footer-meta{{color:#0d6d9e;font-size:0.88em;margin-top:12px;line-height:1.9;}}
+
+        /* Responsive */
+        @media (max-width: 900px) {{
+            .header{{padding:24px 20px;}}
+            .header h1{{font-size:1.5em;letter-spacing:0;}}
+            .header p{{font-size:0.95em;}}
+            .stats-bar{{padding:14px 12px;gap:8px;}}
+            .stat-card{{min-width:100px;padding:12px;flex:1 1 100px;}}
+            .stat-card .value{{font-size:1.4em;}}
+            .stat-card .label{{font-size:0.72em;}}
+            .info-bar{{padding:12px 16px;font-size:0.92em;}}
+            .section{{padding:24px 16px 0 16px;}}
+            .section-title{{font-size:1.05em;}}
+            .section-desc{{font-size:0.92em;}}
+            .map-wrapper{{padding:0 16px 16px 16px;}}
+            .map-container{{height:420px;}}
+            .chart-grid-2{{grid-template-columns:1fr;padding:12px 16px;gap:12px;}}
+            .chart-full{{padding:12px 16px;}}
+            .findings{{grid-template-columns:1fr;padding:12px 16px;gap:12px;}}
+            .footer{{padding:20px 16px;font-size:0.85em;}}
+        }}
+        @media (max-width: 480px) {{
+            .header h1{{font-size:1.2em;}}
+            .stat-card{{flex:1 1 80px;min-width:80px;}}
+            .stat-card .value{{font-size:1.2em;}}
+            .map-container{{height:450px;}}
+        }}
+    </style>
+    <script>
+    window.addEventListener('resize', function() {{
+        var plots = document.querySelectorAll('.js-plotly-plot');
+        plots.forEach(function(plot) {{
+            Plotly.relayout(plot, {{autosize: true}});
+        }});
+    }});
+    </script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>🌊 Ohio HUC-8 Water Quality Monitoring Coverage & Gap Assessment</h1>
+    <p>Spatial Data Analysis in Python</p>
+    <div class="author">Prepared by: {YOUR_NAME} &nbsp;|&nbsp; {YOUR_TITLE}</div>
+</div>
+
+<!-- STAT CARDS -->
+<div class="stats-bar">
+    <div class="stat-card"><div class="value">44</div><div class="label">Total Watersheds</div></div>
+    <div class="stat-card"><div class="value">{len(joined):,}</div><div class="label">Monitoring Locations</div></div>
+    <div class="stat-card"><div class="value">{active_ws}</div><div class="label">Watersheds Monitored</div></div>
+    <div class="stat-card"><div class="value">{unmonitored_ws}</div><div class="label">Unmonitored Watersheds</div></div>
+    <div class="stat-card"><div class="value">{int(most_monitored['station_count'])}</div><div class="label">Max Stations ({most_monitored['Name'].split('-')[0]})</div></div>
+    <div class="stat-card"><div class="value">{highest_density['density_per_1000km2']}</div><div class="label">Highest Density/1k km²</div></div>
+    <div class="stat-card"><div class="value">{best_coverage['coverage_pct']}%</div><div class="label">Best Coverage ({best_coverage['Name'].split('-')[0]})</div></div>
+    <div class="stat-card"><div class="value">{len(org_counts)}</div><div class="label">Monitoring Organizations</div></div>
+</div>
+
+<!-- INFO BAR -->
+<div class="info-bar">
+    ⚠️ &nbsp;<strong>{unmonitored_ws} watersheds with zero monitoring in 2024–2025:</strong>
+    &nbsp;{', '.join(zero_ws_names)}&nbsp;— Critical monitoring gaps requiring attention.
+</div>
+
+<!-- MAP -->
+<div class="section">
+    <div class="section-title">01 — Interactive Watershed Map</div>
+    <div class="section-desc">Hover over watersheds, rivers and monitoring points for details.
+    Use layer control (top right) to toggle layers and switch basemaps.
+    Monitoring locations cluster at lower zoom — zoom in to see individual points.</div>
+</div>
+<div class="map-wrapper">
+    <div class="map-container">
+        <iframe srcdoc="{folium_map_html.replace(chr(34),'&quot;').replace(chr(39),'&#39;')}"></iframe>
+    </div>
+</div>
+
+<!-- DENSITY & GAP -->
+<div class="section">
+    <div class="section-title">02 — Monitoring Density & Gap Analysis</div>
+    <div class="section-desc">Left: Normalized density — grey = zero monitoring, dark blue = highest density.
+    Right: Gap scores — dark blue = largest unmonitored areas, light blue = well covered.</div>
+</div>
+<div class="chart-grid-2">
+    <div class="chart-box">{div_bar}</div>
+    <div class="chart-box">{div_gap}</div>
+</div>
+
+<!-- WHO IS MONITORING -->
+<div class="section">
+    <div class="section-title">03 — Who Is Monitoring?</div>
+    <div class="section-desc">Left: Station count by organization.
+    Right: Data provider split between STORET (EPA) and NWIS (USGS).</div>
+</div>
+<div class="chart-grid-2">
+    <div class="chart-box">{div_org}</div>
+    <div class="chart-box">{div_provider}</div>
+</div>
+
+<!-- STATION TYPE & COVERAGE -->
+<div class="section">
+    <div class="section-title">04 — Station Type Composition & Coverage</div>
+    <div class="section-desc">Left: Statewide breakdown by location type.
+    Right: Station count vs spatial coverage — dot color matches map density scale.</div>
+</div>
+<div class="chart-grid-2">
+    <div class="chart-box">{div_donut}</div>
+    <div class="chart-box">{div_scatter}</div>
+</div>
+
+<!-- STATION TYPE BY WATERSHED -->
+<div class="section">
+    <div class="section-title">05 — Station Type by Watershed</div>
+    <div class="section-desc">Composition of all {active_ws} active watersheds. Hover for exact values.</div>
+</div>
+<div class="chart-full"><div class="chart-box">{div_stack}</div></div>
+
+<!-- KEY FINDINGS -->
+<div class="section"><div class="section-title">06 — Key Findings</div></div>
+<div class="findings">
+    <div class="finding-card">
+        <div class="icon">🏆</div><h4>Most Active Watershed</h4>
+        <p><strong>{most_monitored['Name']}</strong> leads 2024–2025 with
+        {int(most_monitored['station_count'])} monitoring locations.</p>
+    </div>
+    <div class="finding-card">
+        <div class="icon">⚡</div><h4>Highest Density</h4>
+        <p><strong>{highest_density['Name']}</strong> has the highest density at
+        {highest_density['density_per_1000km2']} stations per 1,000 km².</p>
+    </div>
+    <div class="finding-card">
+        <div class="icon">✅</div><h4>Best Spatial Coverage</h4>
+        <p><strong>{best_coverage['Name']}</strong> achieves {best_coverage['coverage_pct']}%
+        spatial coverage — best distributed monitoring in Ohio.</p>
+    </div>
+    <div class="finding-card">
+        <div class="icon">🚨</div><h4>Critical Gaps</h4>
+        <p><strong>{unmonitored_ws} watersheds</strong> recorded zero monitoring in 2024–2025
+        — no water quality data for the entire two-year period.</p>
+    </div>
+    <div class="finding-card">
+        <div class="icon">⚠️</div><h4>Sparse Coverage</h4>
+        <p><strong>{worst_active['Name']}</strong> has only {worst_active['coverage_pct']}%
+        spatial coverage — stations too clustered to represent the full watershed.</p>
+    </div>
+    <div class="finding-card">
+        <div class="icon">🏛️</div><h4>Lead Organization</h4>
+        <p><strong>{top_org['org']}</strong> leads with {int(top_org['count']):,} locations —
+        {round(top_org['count']/len(joined)*100,1)}% of all 2024–2025 activity.</p>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <div class="credit">Prepared by: {YOUR_NAME} &nbsp;|&nbsp; {YOUR_TITLE}</div>
+    <div style="margin:10px 0;">
+        <a href="mailto:kanjinkingsley3@gmail.com">📧 kanjinkingsley3@gmail.com</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="https://www.linkedin.com/in/kingsley-kanjin-9bb368217/" target="_blank">🔗 LinkedIn Profile</a>
+    </div>
+    <div class="footer-meta">
+        Analysis: Python · GeoPandas · Folium · Plotly &nbsp;|&nbsp;
+        Data: USGS WBD, NHD &amp; EPA Water Quality Portal &nbsp;|&nbsp;
+        Period: 2024–2025 &nbsp;|&nbsp; Ohio HUC-8 Watersheds
+    </div>
+</div>
+
+</body>
+</html>"""
+
+save_path = os.path.join(os.getcwd(), OUTPUT_FILE)
+with open(save_path, 'w', encoding='utf-8') as f:
+    f.write(html_final)
+
+print(f"\n{'='*60}")
+print(f"✅ COMPLETE! Saved: {save_path}")
+print(f"{'='*60}")
+print(f"  Watersheds  : 44")
+print(f"  Locations   : {len(joined):,}")
+print(f"  Rivers      : {len(rivers_ohio):,} segments")
+print(f"  Active WS   : {active_ws}")
+print(f"  Unmonitored : {unmonitored_ws}")
+print(f"{'='*60}")
+print(f"Open {OUTPUT_FILE} in your browser!")
