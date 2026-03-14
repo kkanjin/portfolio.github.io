@@ -4,24 +4,24 @@
   /* ── Core Colors ── */
   --bg:        #ffffff;       /* pure white background                   */
   --bg2:       #f4f8fc;       /* off-white section bg                    */
-  --card:      #d0eaf8;       /* sky blue cards                          */
-  --border:    #aed4ea;       /* borders                                 */
+  --card:      #ffffff;       /* white cards                             */
+  --border:    #c8dcea;       /* light blue-grey borders                 */
   --border2:   #1a6b9a;       /* hover borders                           */
 
   /* ── Accent ── */
   --accent:    #1a6b9a;       /* primary steel blue                      */
   --accent2:   #0d4f75;       /* darker blue for hover                   */
-  --accent-bg: rgba(26,107,154,0.10);
+  --accent-bg: rgba(26,107,154,0.08);
 
   /* ── Text ── */
   --ink:       #082f4a;       /* primary text — deep navy                */
-  --muted:     #0d4f75;       /* secondary text — dark ocean blue        */
+  --muted:     #2d6080;       /* secondary text — readable ocean blue    */
   --heading:   #082f4a;       /* headings                                */
 
   /* ── Shadows ── */
-  --shadow-sm: 0 2px 8px  rgba(0,0,0,0.08);
-  --shadow-md: 0 8px 24px rgba(0,0,0,0.10);
-  --shadow-lg: 0 16px 40px rgba(0,0,0,0.13);
+  --shadow-sm: 0 2px 8px  rgba(0,0,0,0.07);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.09);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.12);
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────── */
@@ -31,8 +31,8 @@ body  {
   background: var(--bg);
   color: var(--ink);
   font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 17px;          /* increased base font size */
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent); text-decoration: none; transition: color 0.2s ease; }
@@ -52,10 +52,11 @@ h1, h2, h3, h4 {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
 }
 .nav {
   max-width: 1300px;
@@ -63,21 +64,20 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 14px 24px;
 }
 .brand {
   font-family: 'DM Serif Display', serif;
-  font-size: 1.15em;
+  font-size: 1.2em;
   font-weight: 400;
   color: var(--heading);
-  letter-spacing: 0.3px;
 }
 .nav a {
   margin-left: 6px;
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 8px;
   color: var(--muted);
-  font-size: 0.9em;
+  font-size: 0.95em;
   font-weight: 600;
   transition: all 0.2s ease;
 }
@@ -87,7 +87,7 @@ h1, h2, h3, h4 {
 }
 .nav a.active {
   background: var(--accent-bg);
-  border: 1px solid rgba(26,107,154,0.3);
+  border: 1px solid rgba(26,107,154,0.25);
   color: var(--accent);
 }
 
@@ -95,7 +95,7 @@ h1, h2, h3, h4 {
 .container {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 32px 20px;
+  padding: 36px 24px;
 }
 
 /* ── Hero / Profile ──────────────────────────────────────────── */
@@ -107,7 +107,7 @@ h1, h2, h3, h4 {
   min-height: 70vh;
 }
 .hero .name {
-  font-size: 52px;
+  font-size: 54px;
   line-height: 1.1;
   margin: 8px 0;
   color: var(--heading);
@@ -116,15 +116,15 @@ h1, h2, h3, h4 {
 .role {
   font-family: 'DM Sans', sans-serif;
   font-weight: 700;
-  font-size: 1em;
+  font-size: 1.05em;
   color: var(--accent);
   letter-spacing: 1px;
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .hero p {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 1.1em;
   font-weight: 500;
   margin-bottom: 10px;
 }
@@ -133,16 +133,16 @@ h1, h2, h3, h4 {
 .cta {
   display: flex;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 20px;
   flex-wrap: wrap;
 }
 .btn {
   display: inline-block;
-  padding: 11px 22px;
+  padding: 12px 24px;
   border-radius: 10px;
   font-family: 'DM Sans', sans-serif;
   font-weight: 700;
-  font-size: 0.9em;
+  font-size: 0.95em;
   background: var(--accent);
   color: #ffffff;
   border: 2px solid var(--accent);
@@ -172,7 +172,7 @@ h1, h2, h3, h4 {
   width: 220px;
   height: 220px;
   border-radius: 999px;
-  border: 5px solid var(--card);
+  border: 5px solid #e8f4fb;
   outline: 2px solid var(--border2);
   object-fit: cover;
   box-shadow: var(--shadow-lg);
@@ -200,10 +200,10 @@ h1, h2, h3, h4 {
 .banner img.show { opacity: 1; }
 
 /* ── Sections ────────────────────────────────────────────────── */
-.section { padding: 20px 0; }
+.section { padding: 24px 0; }
 .section h2 {
-  font-size: 28px;
-  margin-bottom: 20px;
+  font-size: 30px;
+  margin-bottom: 22px;
   color: var(--heading);
   position: relative;
   padding-bottom: 12px;
@@ -222,12 +222,12 @@ h1, h2, h3, h4 {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 24px 28px;
+  padding: 26px 30px;
   margin-bottom: 20px;
-  line-height: 1.75;
+  line-height: 1.8;
   color: var(--ink);
-  font-weight: 500;
-  font-size: 1em;
+  font-weight: 400;
+  font-size: 1.05em;
   box-shadow: var(--shadow-md);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -246,7 +246,7 @@ h1, h2, h3, h4 {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 18px;
+  padding: 20px;
   box-shadow: var(--shadow-sm);
   color: var(--ink);
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -254,11 +254,11 @@ h1, h2, h3, h4 {
 .card:hover {
   border-color: var(--border2);
   transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(26,107,154,0.15);
+  box-shadow: 0 12px 28px rgba(26,107,154,0.12);
 }
 .card h3, .card h4 {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.95em;
+  font-size: 1em;
   font-weight: 700;
   color: var(--accent);
   margin-bottom: 8px;
@@ -266,17 +266,18 @@ h1, h2, h3, h4 {
   letter-spacing: 0.5px;
 }
 .card p, .card li {
-  font-size: 0.9em;
+  font-size: 0.95em;
   color: var(--muted);
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-/* ── Project Panels — wider ──────────────────────────────────── */
+/* ── Project Panels ──────────────────────────────────────────── */
 #projects .lead {
   color: var(--muted);
   font-weight: 500;
-  margin-bottom: 8px;
+  font-size: 1.05em;
+  margin-bottom: 10px;
 }
 .panel {
   margin: 28px 0;
@@ -288,7 +289,6 @@ h1, h2, h3, h4 {
   transform: translateY(14px);
   opacity: 0;
   transition: 0.8s all ease;
-  /* wider: stretch to full container width with extra horizontal padding */
   width: 100%;
 }
 .panel.visible {
@@ -301,20 +301,20 @@ h1, h2, h3, h4 {
 }
 .panel-body {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr;  /* wider text column */
+  grid-template-columns: 1.4fr 0.8fr;
   gap: 32px;
-  padding: 32px 36px;                   /* more padding for spacious feel */
+  padding: 32px 40px;
 }
 .subtitle {
   color: var(--muted);
   font-weight: 500;
-  margin: 6px 0 12px;
-  font-size: 0.9em;
+  font-size: 1em;
+  margin: 6px 0 14px;
 }
 
 /* ── Meta Lists ──────────────────────────────────────────────── */
 .meta {
-  margin-top: 14px;
+  margin-top: 16px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -323,18 +323,18 @@ h1, h2, h3, h4 {
   font-family: 'DM Sans', sans-serif;
   margin: 0 0 8px;
   color: var(--accent);
-  font-size: 0.85em;
+  font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 700;
 }
-.meta ul { margin: 0; padding-left: 16px; }
+.meta ul { margin: 0; padding-left: 18px; }
 .meta li {
-  margin: 4px 0;
+  margin: 5px 0;
   color: var(--muted);
-  font-size: 0.88em;
+  font-size: 0.95em;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 /* ── Map Preview ─────────────────────────────────────────────── */
@@ -342,7 +342,7 @@ h1, h2, h3, h4 {
   width: 100%;
   height: 440px;
   object-fit: contain;
-  background: #b8ddf2;
+  background: #f4f8fc;
   border-radius: 12px;
   border: 1px solid var(--border);
   display: block;
@@ -353,10 +353,10 @@ h1, h2, h3, h4 {
   margin-top: 48px;
   border-top: 3px solid var(--accent);
   background: linear-gradient(135deg, #d0eaf8 0%, #b8ddf2 50%, #d0eaf8 100%);
-  padding: 28px 0 36px;
+  padding: 30px 0 38px;
   text-align: center;
-  font-size: 0.88em;
-  line-height: 1.8;
+  font-size: 0.92em;
+  line-height: 1.9;
 }
 .footer a {
   color: var(--accent);
@@ -367,7 +367,7 @@ h1, h2, h3, h4 {
 .footer .credit {
   color: var(--heading);
   font-weight: 700;
-  font-size: 1em;
+  font-size: 1.05em;
   margin-bottom: 8px;
 }
 .footer p { color: var(--muted); font-weight: 500; }
@@ -415,9 +415,9 @@ h1, h2, h3, h4 {
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  background: rgba(255, 255, 255, 0.80);
+  background: rgba(255, 255, 255, 0.82);
   color: var(--ink);
-  padding: 28px 42px;
+  padding: 30px 48px;
   border-radius: 16px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -426,13 +426,13 @@ h1, h2, h3, h4 {
 }
 .hero-slideshow .overlay-text h1 {
   margin: 0 0 10px;
-  font-size: 52px;
+  font-size: 54px;
   letter-spacing: 0.5px;
   color: var(--heading);
 }
 .hero-slideshow .overlay-text p {
   margin: 0;
-  font-size: 20px;
+  font-size: 21px;
   color: var(--muted);
   font-weight: 600;
 }
@@ -472,16 +472,15 @@ arcgis-embedded-map { overflow: hidden; }
   text-align: center;
   color: var(--muted);
   padding: 10px 6px 4px;
-  font-size: 0.88em;
+  font-size: 0.92em;
   font-weight: 600;
-  letter-spacing: 0.2px;
 }
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .hero         { grid-template-columns: 1fr; min-height: auto; gap: 24px; }
   .grid         { grid-template-columns: 1fr 1fr; }
-  .panel-body   { grid-template-columns: 1fr; padding: 20px 24px; gap: 20px; }
+  .panel-body   { grid-template-columns: 1fr; padding: 24px 28px; gap: 20px; }
   .meta         { grid-template-columns: 1fr; }
   .map-grid     { grid-template-columns: 1fr; }
   .map-frame iframe,
@@ -489,12 +488,12 @@ arcgis-embedded-map { overflow: hidden; }
 }
 @media (max-width: 640px) {
   .grid         { grid-template-columns: 1fr; }
-  .hero .name   { font-size: 38px; }
+  .hero .name   { font-size: 40px; }
   .banner img   { height: 240px; }
   .cta          { flex-direction: column; }
   .btn          { text-align: center; }
-  .section h2   { font-size: 24px; }
-  .panel-body   { padding: 16px 18px; }
+  .section h2   { font-size: 26px; }
+  .panel-body   { padding: 18px 20px; }
   .map-frame iframe,
   arcgis-embedded-map { height: 360px; }
 }
