@@ -28,11 +28,11 @@ function highlightNav() {
 function listHTML(title, arr, compact) {
     if (!Array.isArray(arr) || !arr.length) return '';
     const mt = compact ? '0' : '14px';
-    const fs = compact ? '0.88em' : '0.92em';
+    const fs = compact ? '0.88em' : '1em';
     return `
         <div>
             <h4 style="color:var(--accent);font-family:'DM Sans',sans-serif;
-                font-size:0.82em;font-weight:700;text-transform:uppercase;
+                font-size:0.9em;font-weight:700;text-transform:uppercase;
                 letter-spacing:0.5px;margin:0 0 6px;">${title}</h4>
             <ul style="padding-left:16px;margin:0;">
                 ${arr.map(x => `<li style="color:var(--muted);font-size:${fs};
