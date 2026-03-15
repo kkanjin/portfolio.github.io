@@ -25,21 +25,24 @@ function highlightNav() {
 }
 
 // ── List HTML helper ──────────────────────────────────────────────
-function listHTML(title, arr) {
+function listHTML(title, arr, compact) {
     if (!Array.isArray(arr) || !arr.length) return '';
+    const mt = compact ? '10px' : '14px';
+    const mb = compact ? '6px'  : '8px';
+    const fs = compact ? '0.88em' : '0.92em';
     return `
         <div>
             <h4 style="color:var(--accent);font-family:'DM Sans',sans-serif;
-                font-size:0.85em;font-weight:700;text-transform:uppercase;
-                letter-spacing:0.5px;margin:14px 0 8px;">${title}</h4>
+                font-size:0.82em;font-weight:700;text-transform:uppercase;
+                letter-spacing:0.5px;margin:${mt} 0 ${mb};">${title}</h4>
             <ul style="padding-left:16px;margin:0;">
-                ${arr.map(x => `<li style="color:var(--muted);font-size:0.92em;
-                    line-height:1.6;margin:4px 0;">${x}</li>`).join('')}
+                ${arr.map(x => `<li style="color:var(--muted);font-size:${fs};
+                    line-height:1.55;margin:3px 0;">${x}</li>`).join('')}
             </ul>
         </div>`;
 }
 
-// ── Projects that use portrait layout (map below text) ────────────
+// ── Projects that use portrait layout (text top, map below) ───────
 const PORTRAIT_PROJECTS = [
     'Accessibility to Improved Water Point Sources — 2SFCA',
     'Accessibility to Dentist — 2SFCA'
@@ -55,21 +58,21 @@ async function loadPanels() {
         host.innerHTML = '';
 
         data.forEach(p => {
-            const el = document.createElement('section');
+            const el        = document.createElement('section');
+            const isPortrait = PORTRAIT_PROJECTS.includes(p.title.trim());
+            const compact    = isPortrait;
 
-            const methodsList     = listHTML('Methods',      p.methods);
-            const dataList        = listHTML('Data Used',    p['Data']);
-            const keyFindingsList = listHTML('Key Findings', p['Key findings']);
+            const methodsList     = listHTML('Methods',      p.methods,        compact);
+            const dataList        = listHTML('Data Used',    p['Data'],        compact);
+            const keyFindingsList = listHTML('Key Findings', p['Key findings'], compact);
 
             const toolPills = Array.isArray(p.tools) && p.tools.length
                 ? `<div class="pills">${p.tools.map(t =>
                     `<span class="pill">🛠 ${t}</span>`).join('')}</div>`
                 : '';
 
-            const isPortrait = PORTRAIT_PROJECTS.includes(p.title.trim());
-
             if (isPortrait) {
-                // ── PORTRAIT layout: text on top, map below ───────
+                // ── PORTRAIT: text top, map bottom ────────────────
                 el.className = 'panel panel-portrait';
                 el.innerHTML = `
                     <div class="panel-body-portrait">
@@ -88,7 +91,7 @@ async function loadPanels() {
                         </div>
                     </div>`;
             } else {
-                // ── LANDSCAPE layout: text left, map right ────────
+                // ── LANDSCAPE: text left, map right ───────────────
                 el.className = 'panel panel-landscape';
                 el.innerHTML = `
                     <div class="panel-body-landscape">
