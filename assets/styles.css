@@ -308,3 +308,84 @@ arcgis-embedded-map { overflow: hidden; }
   .panel-hero       { max-height: 220px; }
   .container        { padding: 24px 16px; }
 }
+
+/* ══ PORTRAIT LAYOUT (map below text) — 2SFCA cards ═════════════ */
+.panel-body-portrait {
+  display: flex;
+  flex-direction: column;
+}
+.panel-body-portrait .text {
+  padding: 28px 32px 20px;
+}
+.panel-body-portrait .text h3 {
+  font-size: 1.2em; font-weight: 700;
+  color: var(--ink); margin-bottom: 6px; line-height: 1.3;
+}
+.panel-body-portrait .text p {
+  font-size: 0.95em; color: var(--muted);
+  font-weight: 500; line-height: 1.7; margin-bottom: 8px;
+}
+.map-portrait {
+  width: 100%;
+  padding: 0 24px 24px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 24px;
+}
+.panel-hero-portrait {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+  background: transparent;
+}
+
+/* ══ LANDSCAPE LAYOUT (map on right) — all other cards ══════════ */
+.panel-body-landscape {
+  display: grid;
+  grid-template-columns: 52% 48%;
+  gap: 0;
+  align-items: stretch;
+}
+.panel-body-landscape .text {
+  padding: 28px 30px;
+  border-right: 1px solid var(--border);
+}
+.panel-body-landscape .text h3 {
+  font-size: 1.2em; font-weight: 700;
+  color: var(--ink); margin-bottom: 6px; line-height: 1.3;
+}
+.panel-body-landscape .text p {
+  font-size: 0.95em; color: var(--muted);
+  font-weight: 500; line-height: 1.7; margin-bottom: 8px;
+}
+.map-landscape {
+  padding: 20px; background: var(--bg2);
+  display: flex; align-items: center; justify-content: center;
+}
+.panel-hero-landscape {
+  width: 100%;
+  height: 100%;
+  min-height: 340px;
+  object-fit: contain;
+  background: #eef5fb;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .panel-body-landscape {
+    grid-template-columns: 1fr;
+  }
+  .panel-body-landscape .text {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-hero-landscape { min-height: 260px; }
+}
