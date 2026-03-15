@@ -1,200 +1,470 @@
-/* ═══════════════════════════════════════════════════════════════════
-   Kingsley Kanjin Portfolio — script.js
-   Fixes: Methods heading styled, image white-bg removed,
-          slideshow uses is-active class consistently
-   ═══════════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
 
-// ── Smooth scroll navigation ──────────────────────────────────────
-function smoothNav() {
-    document.querySelectorAll('.nav a[href^="#"]').forEach(a => {
-        a.addEventListener('click', e => {
-            e.preventDefault();
-            const target = document.querySelector(a.getAttribute('href'));
-            if (target) target.scrollIntoView({ behavior: 'smooth' });
-        });
-    });
+:root {
+  --bg:         #ffffff;
+  --bg2:        #f4f8fc;
+  --card:       #ffffff;
+  --card-blue:  #d0eaf8;
+  --border:     #c8dcea;
+  --border2:    #1a6b9a;
+  --accent:     #1a6b9a;
+  --accent2:    #0d4f75;
+  --accent-bg:  rgba(26,107,154,0.08);
+  --ink:        #082f4a;
+  --muted:      #2d6080;
+  --nav-bg:     #082f4a;
+  --shadow-sm:  0 2px 8px  rgba(0,0,0,0.07);
+  --shadow-md:  0 8px 24px rgba(0,0,0,0.09);
+  --shadow-lg:  0 16px 40px rgba(0,0,0,0.12);
 }
 
-// ── Highlight active nav link on scroll ───────────────────────────
-function highlightNav() {
-    const ids = ['about', 'experience', 'skills', 'projects', 'maps', 'contact'];
-    const obs = new IntersectionObserver(entries => {
-        entries.forEach(en => {
-            const link = document.querySelector('.nav a[href="#' + en.target.id + '"]');
-            if (link) link.classList.toggle('active', en.isIntersecting);
-        });
-    }, { threshold: 0.4 });
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) obs.observe(el);
-    });
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--accent2); }
+h1, h2, h3, h4 { color: var(--ink); font-family: 'DM Serif Display', serif; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ══ NAVIGATION — dark navy ══════════════════════════════════════ */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--nav-bg);
+  border-bottom: 2px solid rgba(77,184,212,0.3);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.nav {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+}
+.brand {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.2em;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+.nav-links a {
+  margin-left: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.92em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.nav-links a:hover {
+  color: #ffffff;
+  background: rgba(255,255,255,0.12);
+}
+.nav-links a.active {
+  color: #4db8d4;
+  background: rgba(77,184,212,0.12);
+  border: 1px solid rgba(77,184,212,0.25);
 }
 
-// ── Rotate about-section banner images ───────────────────────────
-function rotateBanner() {
-    const imgs = document.querySelectorAll('.banner img');
-    if (!imgs.length) return;
-    let i = 0;
-    function show() {
-        imgs.forEach((im, idx) => im.classList.toggle('show', idx === i));
-        i = (i + 1) % imgs.length;
-    }
-    show();
-    setInterval(show, 3500);
+/* ══ HERO — light blue, centered ════════════════════════════════ */
+.hero-section {
+  background: linear-gradient(160deg, #d0eaf8 0%, #b8ddf2 100%);
+  border-bottom: 2px solid var(--border);
+  padding: 64px 24px 72px;
+  text-align: center;
+}
+.hero-inner {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.portrait {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid #ffffff;
+  box-shadow: 0 8px 32px rgba(26,107,154,0.25);
+  margin-bottom: 22px;
+  transition: transform 0.3s;
+}
+.portrait:hover { transform: scale(1.03); }
+.name {
+  font-size: 48px;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.role {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 1em;
+  color: var(--accent);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.hero-desc {
+  color: var(--muted);
+  font-size: 1.05em;
+  font-weight: 500;
+  max-width: 560px;
+  margin: 0 auto 24px;
+  line-height: 1.7;
+}
+.cta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-block;
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.92em;
+  background: var(--accent);
+  color: #ffffff;
+  border: 2px solid var(--accent);
+  transition: all 0.25s;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(26,107,154,0.2);
+}
+.btn:hover {
+  background: var(--accent2);
+  border-color: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(13,79,117,0.25);
+  color: #ffffff;
+}
+.btn.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+.btn.secondary:hover {
+  background: var(--accent);
+  color: #ffffff;
 }
 
-// ── Build list HTML helper ────────────────────────────────────────
-function listHTML(title, arr) {
-    if (!Array.isArray(arr) || !arr.length) return '';
-    return `
-        <div>
-            <h4 style="
-                color: var(--accent2);
-                font-family: 'DM Sans', sans-serif;
-                font-size: 0.82em;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.6px;
-                margin: 14px 0 8px;
-            ">${title}</h4>
-            <ul style="
-                padding-left: 16px;
-                margin: 0;
-            ">
-                ${arr.map(x => `
-                    <li style="
-                        color: var(--muted);
-                        font-size: 0.88em;
-                        line-height: 1.6;
-                        margin: 4px 0;
-                    ">${x}</li>
-                `).join('')}
-            </ul>
-        </div>`;
+/* ══ LAYOUT ══════════════════════════════════════════════════════ */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 36px 28px;
+}
+.section { padding: 28px 0; }
+.section h2 {
+  font-size: 30px;
+  margin-bottom: 6px;
+  color: var(--ink);
+  position: relative;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+.section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 48px; height: 3px;
+  background: linear-gradient(90deg, var(--accent), #4db8d4);
+  border-radius: 2px;
+}
+.lead {
+  color: var(--muted);
+  font-size: 1.02em;
+  font-weight: 500;
+  margin-bottom: 8px;
 }
 
-// ── Load and render project panels ───────────────────────────────
-async function loadPanels() {
-    try {
-        const res  = await fetch('assets/projects.json');
-        const data = await res.json();
-        const host = document.getElementById('story-panels');
-        host.innerHTML = '';
-
-        data.forEach(p => {
-            const el = document.createElement('section');
-            el.className = 'panel';
-
-            const methodsList     = listHTML('Methods',      p.methods);
-            const dataList        = listHTML('Data Used',    p['Data']);
-            const keyFindingsList = listHTML('Key Findings', p['Key findings']);
-
-            const toolPills = Array.isArray(p.tools) && p.tools.length
-                ? `<div class="pills" style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">
-                       ${p.tools.map(t => `
-                           <span style="
-                               background: rgba(26,107,154,0.15);
-                               border: 1px solid var(--border2);
-                               color: var(--accent2);
-                               border-radius: 20px;
-                               padding: 4px 12px;
-                               font-size: 0.78em;
-                               font-weight: 600;
-                               letter-spacing: 0.3px;
-                           ">🛠 ${t}</span>`
-                       ).join('')}
-                   </div>`
-                : '';
-
-            el.innerHTML = `
-                <div class="panel-body">
-                    <div class="text">
-                        <h3 style="
-                            font-family: 'DM Serif Display', serif;
-                            font-size: 1.25em;
-                            color: var(--heading);
-                            margin-bottom: 6px;
-                        ">${p.title}</h3>
-
-                        <div class="subtitle">${p.subtitle || ''}</div>
-
-                        <p style="
-                            color: var(--ink);
-                            font-size: 0.92em;
-                            line-height: 1.75;
-                            margin: 10px 0;
-                        ">${p.description || ''}</p>
-
-                        ${methodsList}
-
-                        <div class="meta">
-                            ${dataList}
-                            ${keyFindingsList}
-                        </div>
-
-                        ${toolPills}
-                    </div>
-
-                    <div class="map">
-                        <img
-                            class="panel-hero"
-                            src="${p.hero_image}"
-                            alt="${p.title}"
-                            style="
-                                width: 100%;
-                                height: 440px;
-                                object-fit: contain;
-                                border-radius: 12px;
-                                border: 1px solid var(--border);
-                                background: var(--bg2);
-                                display: block;
-                            "
-                        />
-                    </div>
-                </div>`;
-
-            host.appendChild(el);
-        });
-
-        // Animate panels into view on scroll
-        const obs = new IntersectionObserver(entries => {
-            entries.forEach(e => {
-                if (e.isIntersecting) e.target.classList.add('visible');
-            });
-        }, { threshold: 0.12 });
-        document.querySelectorAll('.panel').forEach(p => obs.observe(p));
-
-    } catch (err) {
-        console.error('Could not load projects.json:', err);
-    }
+/* ══ EXPERIENCE ══════════════════════════════════════════════════ */
+.exp-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.2s;
+}
+.exp-card:hover { box-shadow: var(--shadow-lg); }
+.exp-header {
+  background: linear-gradient(135deg, #082f4a 0%, #1a3a5c 100%);
+  padding: 24px 30px;
+}
+.exp-org {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.2em;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+.exp-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.exp-role {
+  font-size: 0.92em;
+  font-weight: 600;
+  color: #4db8d4;
+}
+.exp-period {
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+.exp-body {
+  padding: 28px 30px;
+}
+.exp-summary {
+  color: var(--muted);
+  font-size: 1em;
+  font-weight: 500;
+  line-height: 1.75;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.exp-highlights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.highlight {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.h-icon {
+  font-size: 1.4em;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.highlight strong {
+  display: block;
+  font-size: 0.95em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  font-family: 'DM Sans', sans-serif;
+}
+.highlight p {
+  font-size: 0.88em;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0;
 }
 
-// ── Full-width hero slideshow ─────────────────────────────────────
-function rotateHeroSlideshow() {
-    const slides = document.querySelectorAll('.hero-slideshow .slides img');
-    if (!slides.length) return;
-
-    // Mark slideshow as JS-controlled (disables CSS fallback animation)
-    const section = document.querySelector('.hero-slideshow');
-    if (section) section.classList.add('js-active');
-
-    let index = 0;
-    // Show first slide immediately
-    slides[0].classList.add('is-active');
-
-    setInterval(() => {
-        slides[index].classList.remove('is-active');
-        index = (index + 1) % slides.length;
-        slides[index].classList.add('is-active');
-    }, 5000); // rotate every 5 seconds
+/* ══ SKILLS ══════════════════════════════════════════════════════ */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.skill-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+  border-top: 3px solid var(--accent);
+}
+.skill-card:hover {
+  border-color: var(--border2);
+  border-top-color: var(--border2);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+.skill-icon {
+  font-size: 1.8em;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.skill-card h4 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88em;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+.skill-card p {
+  font-size: 0.92em;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0;
 }
 
-// ── Init on DOM ready ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    smoothNav();
-    highlightNav();
-    rotateBanner();
-    loadPanels();
-    rotateHeroSlideshow();
-    document.getElementById('year').textContent = new Date().getFullYear();
-});
+/* ══ PROJECT PANELS — narrower, bigger map ═══════════════════════ */
+.panel {
+  max-width: 1000px;          /* narrower than full width */
+  margin: 28px auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transform: translateY(14px);
+  opacity: 0;
+  transition: 0.8s all ease;
+}
+.panel.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+.panel:hover {
+  border-color: var(--border2);
+  box-shadow: var(--shadow-lg);
+}
+.panel-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;   /* equal columns */
+  gap: 0;
+}
+.panel-body .text {
+  padding: 28px 28px 28px 28px;
+  border-right: 1px solid var(--border);
+}
+.panel-body .map {
+  padding: 20px;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-body h3 {
+  font-size: 1.1em;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.subtitle {
+  color: var(--accent);
+  font-size: 0.88em;
+  font-weight: 600;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.panel-body p {
+  font-size: 0.9em;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.panel-hero {
+  width: 100%;
+  height: 340px;             /* bigger map */
+  object-fit: contain;
+  background: #f0f7ff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+/* ══ CONTACT ══════════════════════════════════════════════════════ */
+.contact-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 32px;
+  max-width: 480px;
+  box-shadow: var(--shadow-sm);
+}
+.contact-card p {
+  margin-bottom: 12px;
+  font-size: 1em;
+  font-weight: 500;
+  color: var(--muted);
+}
+.contact-card a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.contact-card a:hover { color: var(--accent2); }
+
+/* ══ MAPS ═════════════════════════════════════════════════════════ */
+.map-frame {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: var(--shadow-md);
+  transition: border-color 0.2s;
+}
+.map-frame:hover { border-color: var(--border2); }
+.map-frame iframe, arcgis-embedded-map {
+  width: 100%;
+  height: 600px;
+  border: none;
+  border-radius: 10px;
+}
+arcgis-embedded-map { overflow: hidden; }
+.map-caption {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--accent);
+  padding-bottom: 10px;
+  text-align: center;
+}
+
+/* ══ FOOTER ═══════════════════════════════════════════════════════ */
+.footer {
+  margin-top: 56px;
+  border-top: 3px solid var(--accent);
+  background: linear-gradient(135deg, #d0eaf8 0%, #b8ddf2 50%, #d0eaf8 100%);
+  padding: 32px 20px 40px;
+  text-align: center;
+  font-size: 0.9em;
+  line-height: 1.9;
+}
+.footer .credit {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1.05em;
+  margin-bottom: 8px;
+}
+.footer a { color: var(--accent); font-weight: 600; }
+.footer a:hover { color: var(--accent2); }
+.footer p { color: var(--muted); font-weight: 500; }
+
+/* ══ RESPONSIVE ═══════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .skills-grid        { grid-template-columns: 1fr 1fr; }
+  .exp-highlights     { grid-template-columns: 1fr; }
+  .panel-body         { grid-template-columns: 1fr; }
+  .panel-body .text   { border-right: none; border-bottom: 1px solid var(--border); }
+  .panel-body .map    { padding: 16px; }
+  .panel              { max-width: 100%; }
+  .name               { font-size: 38px; }
+}
+@media (max-width: 600px) {
+  .skills-grid        { grid-template-columns: 1fr; }
+  .nav-links a        { margin-left: 2px; padding: 6px 8px; font-size: 0.82em; }
+  .name               { font-size: 32px; }
+  .cta                { flex-direction: column; align-items: center; }
+  .section h2         { font-size: 24px; }
+  .exp-header         { padding: 18px 20px; }
+  .exp-body           { padding: 20px; }
+  .panel-body .text   { padding: 20px; }
+  .panel-hero         { height: 260px; }
+}
