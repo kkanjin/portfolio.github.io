@@ -39,6 +39,12 @@ function listHTML(title, arr) {
         </div>`;
 }
 
+// ── Projects that use portrait layout (map below text) ────────────
+const PORTRAIT_PROJECTS = [
+    'Accessibility to Improved Water Point Sources — 2SFCA',
+    'Accessibility to Dentist — 2SFCA'
+];
+
 // ── Load project panels ───────────────────────────────────────────
 async function loadPanels() {
     try {
@@ -50,7 +56,6 @@ async function loadPanels() {
 
         data.forEach(p => {
             const el = document.createElement('section');
-            el.className = 'panel';
 
             const methodsList     = listHTML('Methods',      p.methods);
             const dataList        = listHTML('Data Used',    p['Data']);
@@ -61,24 +66,52 @@ async function loadPanels() {
                     `<span class="pill">🛠 ${t}</span>`).join('')}</div>`
                 : '';
 
-            el.innerHTML = `
-                <div class="panel-body">
-                    <div class="text">
-                        <h3>${p.title}</h3>
-                        <div class="subtitle">${p.subtitle || ''}</div>
-                        <p>${p.description || ''}</p>
-                        ${methodsList}
-                        <div class="meta">${dataList}${keyFindingsList}</div>
-                        ${toolPills}
-                    </div>
-                    <div class="map">
-                        <img class="panel-hero" src="${p.hero_image}" alt="${p.title}" />
-                    </div>
-                </div>`;
+            const isPortrait = PORTRAIT_PROJECTS.includes(p.title.trim());
+
+            if (isPortrait) {
+                // ── PORTRAIT layout: text on top, map below ───────
+                el.className = 'panel panel-portrait';
+                el.innerHTML = `
+                    <div class="panel-body-portrait">
+                        <div class="text">
+                            <h3>${p.title}</h3>
+                            <div class="subtitle">${p.subtitle || ''}</div>
+                            <p>${p.description || ''}</p>
+                            ${methodsList}
+                            <div class="meta">${dataList}${keyFindingsList}</div>
+                            ${toolPills}
+                        </div>
+                        <div class="map-portrait">
+                            <img class="panel-hero-portrait"
+                                 src="${p.hero_image}"
+                                 alt="${p.title}" />
+                        </div>
+                    </div>`;
+            } else {
+                // ── LANDSCAPE layout: text left, map right ────────
+                el.className = 'panel panel-landscape';
+                el.innerHTML = `
+                    <div class="panel-body-landscape">
+                        <div class="text">
+                            <h3>${p.title}</h3>
+                            <div class="subtitle">${p.subtitle || ''}</div>
+                            <p>${p.description || ''}</p>
+                            ${methodsList}
+                            <div class="meta">${dataList}${keyFindingsList}</div>
+                            ${toolPills}
+                        </div>
+                        <div class="map-landscape">
+                            <img class="panel-hero-landscape"
+                                 src="${p.hero_image}"
+                                 alt="${p.title}" />
+                        </div>
+                    </div>`;
+            }
 
             host.appendChild(el);
         });
 
+        // Animate panels in on scroll
         const obs = new IntersectionObserver(entries => {
             entries.forEach(e => {
                 if (e.isIntersecting) {
