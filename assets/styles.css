@@ -389,3 +389,24 @@ arcgis-embedded-map { overflow: hidden; }
   }
   .panel-hero-landscape { min-height: 260px; }
 }
+
+/* ══ PORTRAIT LAYOUT FIXES — reduce empty space ═════════════════ */
+.panel-portrait {
+  max-width: 860px;           /* narrower — removes side margins   */
+  margin: 24px auto;
+}
+.panel-body-portrait .text {
+  padding: 24px 28px 16px;   /* tighter padding                    */
+}
+.panel-body-portrait .text h3 { font-size: 1.15em; margin-bottom: 5px; }
+.panel-body-portrait .text p  { font-size: 0.93em; margin-bottom: 6px; }
+.map-portrait {
+  padding: 16px 28px 24px;   /* less padding around map            */
+}
+.panel-hero-portrait {
+  max-height: 380px;
+}
+
+/* tighten meta + methods spacing inside portrait cards */
+.panel-body-portrait .meta { margin-top: 10px; gap: 10px; }
+.panel-body-portrait .pills { margin-top: 10px; }
