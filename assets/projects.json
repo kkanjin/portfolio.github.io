@@ -1,76 +1,74 @@
 [
   {
-    "id": "2sfca",
+    "id": "2sfca_sibi",
     "title": "Accessibility to Improved Water Point Sources — 2SFCA",
-    "subtitle": "Identifying households with low access to improved water sources in Sibi, Ghana using the Two-Step Floating Catchment Area method.",
+    "subtitle": "Spatial accessibility to improved water sources in Sibi, Ghana.",
     "hero_image": "assets/images/2sfca_sibi.jpg",
-    "description": "This analysis models spatial accessibility to improved water point sources (boreholes and public standpipes) in Sibi, Ghana by computing the ratio of available improved water point sources and households within 500m walking catchments.",
-    "Data": [ "Household locations", "Water point sources locations", "Road network" ],
+    "description": "Models household accessibility to boreholes and standpipes using the Two-Step Floating Catchment Area method with 500m walking catchments — Ghana's national standard for improved access.",
+    "Data": [ "Household locations", "Water point sources", "Road network" ],
     "methods": [
-      "Two-Step Floating Catchment Area analysis",
-      "500m catchments generated using OD Matrix — the 500m is Ghana's national standard for improved access",
-      "Catchment ratios"
+      "Two-Step Floating Catchment Area (2SFCA)",
+      "500m OD Matrix catchments",
+      "Catchment ratio computation"
     ],
     "tools": [ "ArcGIS Pro", "Python" ],
     "Key findings": [
-      "Accessibility varies significantly across neighborhoods",
-      "Households at the peripheries have limited numbers of improved water sources leading to low accessibility scores.",
-      "Clusters of low access align with longer walking distances and lower facility density in these areas.",
-      "Results highlight priority areas for new or upgraded water points."
+      "Accessibility varies significantly across neighbourhoods.",
+      "Peripheral households face limited access due to sparse facility coverage.",
+      "Low-access clusters highlight priority areas for new water points."
     ]
   },
   {
-    "id": "2sfca",
+    "id": "2sfca_dc",
     "title": "Accessibility to Dentist — 2SFCA",
-    "subtitle": "Identifying the level of accessibility to Dentist in Washington DC using the Two-Step Floating Catchment Area method.",
+    "subtitle": "Spatial accessibility to dental care in Washington DC.",
     "hero_image": "assets/images/AccessibilitytoDentist.jpg",
-    "description": "This analysis models spatial accessibility to dentist locations in Washington DCby computing the ratio of available dentistal hospital to households within 10 miles driving distance.",
-    "Data": [ "Dental Hospital locations", "Census Tract Centriods", "Total Number of population in a tract", "Road network" ],
+    "description": "Computes dental care accessibility across Washington DC using 10-mile driving catchments and the Two-Step Floating Catchment Area method.",
+    "Data": [ "Dental facility locations", "Census tract centroids", "Population counts", "Road network" ],
     "methods": [
-      "Two-Step Floating Catchment Area analysis to compute the accessibility scores",
-      "10 miles catchments generated using OD Matrix"
+      "Two-Step Floating Catchment Area (2SFCA)",
+      "10-mile OD Matrix catchments"
     ],
     "tools": [ "ArcGIS Pro", "Python" ],
     "Key findings": [
-      "Spatial accessibility exhibits strong urban concentration, with higher accessibility scores clustered around the city center, reflecting greater dental hospital density and service availability within central catchments.",
-      "Peripheral and southeastern areas demonstrate spatial inequities in dental care access, characterized by lower accessibility scores and sparse facility distribution, underscoring the need for strategic facility siting or expanded service coverage in those regions."
+      "Higher accessibility clusters around the city centre where facility density is greatest.",
+      "Peripheral and southeastern areas show significant access gaps, indicating need for strategic facility siting."
     ]
   },
   {
     "id": "ndvi_lst",
     "title": "NDVI & Land Surface Temperature",
-    "subtitle": "Vegetation–temperature dynamics to understand urban heat.",
+    "subtitle": "Vegetation–temperature dynamics for urban heat analysis.",
     "hero_image": "assets/images/LST&NDVI.png",
-    "description": "MODIS NDVI and LST time series were analyzed to reveal inverse relationships between greenness and temperature. Hotspots indicate where greening could reduce heat exposure.",
+    "description": "MODIS NDVI and LST time series analysed to reveal inverse relationships between greenness and surface temperature. Hotspots indicate where greening could reduce heat exposure.",
     "methods": [ "Time series extraction", "Zonal statistics", "Correlation mapping" ],
     "tools": [ "Google Earth Engine", "R" ]
   },
   {
     "id": "rwh",
     "title": "Rainwater Harvesting Suitability",
-    "subtitle": "Multi-criteria decision analysis for surface rainwater harvesting.",
+    "subtitle": "Multi-criteria suitability analysis for rainwater harvesting.",
     "hero_image": "assets/images/RainWaterHarvesting.png",
-    "description": "A weighted overlay of slope, roof area, rainfall, and proximity to buildings prioritizes locations for rainwater harvesting to enhance water security.",
-    "methods": [ "Raster reclass", "Weighted overlay", "MCDA" ],
+    "description": "Weighted overlay of slope, roof area, rainfall, and building proximity to identify optimal rainwater harvesting sites and enhance community water security.",
+    "methods": [ "Raster reclassification", "Weighted overlay", "MCDA" ],
     "tools": [ "ArcGIS Pro" ]
   },
   {
     "id": "flood",
     "title": "Flood Risk Mapping",
-    "subtitle": "Hydrologic modeling using DEM, soil, and land cover to map susceptibility.",
+    "subtitle": "Hydrologic flood susceptibility modelling.",
     "hero_image": "assets/images/Flood_Risk.jpg",
-    "description": "Flow direction, accumulation, and slope were combined with land cover and soils to produce a flood susceptibility index. Outputs support mitigation planning and infrastructure prioritization.",
-    "methods": [ "Flow direction/accumulation", "SCS Curve Number", "Weighted overlay" ],
+    "description": "Flow direction, accumulation, slope, land cover and soil data combined into a flood susceptibility index to support mitigation planning and infrastructure prioritisation.",
+    "methods": [ "Flow direction & accumulation", "SCS Curve Number", "Weighted overlay" ],
     "tools": [ "ArcGIS Pro" ]
   },
   {
     "id": "lidar",
     "title": "LiDAR Canopy Height Model",
-    "subtitle": "Deriving DSM/DTM and CHM for urban greenness assessment.",
+    "subtitle": "DSM, DTM and CHM for urban greenness assessment.",
     "hero_image": "assets/images/CanopyHeight_Lidar.jpg",
-    "description": "LiDAR point clouds were processed to produce terrain and surface models. The canopy height model helps quantify vegetation structure and identify low-shade areas.",
+    "description": "LiDAR point clouds processed into terrain and surface models. The canopy height model quantifies vegetation structure and identifies low-shade urban areas.",
     "methods": [ "Point classification", "Rasterization", "CHM computation" ],
     "tools": [ "ArcGIS Pro", "ENVI" ]
   }
 ]
-
